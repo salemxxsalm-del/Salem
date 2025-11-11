@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام تحضير الطلاب بالباركود</title>
+<style>
+  body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+  h1 { color: #333; }
+  #reader { width: 100%; max-width: 400px; margin: 20px auto; }
+  button { padding: 10px 20px; font-size: 16px; margin: 5px; cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  th, td { border: 1px solid #333; padding: 8px; }
+</style>
+</head>
+<body>
+
+<h1>نظام تحضير الطلاب بالباركود</h1>
+
+<button id="startScan">تحضير الصف</button>
+<button id="showList">عرض الحاضرين</button>
+
+<div id="scanner" style="display:none;">
+  <div id="reader"></div>
+</div>
+
+<div id="attendanceList" style="display:none;">
+  <h2>الحاضرين</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>اسم الطالب</th>
+        <th>الباركود</th>
+        <th>التاريخ</th>
+        <th>الوقت</th>
+      </tr>
+    </thead>
+    <tbody id="listBody"></tbody>
+  </table>
+</div>
+
+<!-- مكتبة html5-qrcode -->
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+const startScanBtn = document.getElementById('startScan');
+const showListBtn = document.getElementById('showList');
+const scannerDiv = document.getElementById('scanner');
+const attendanceDiv = document.getElementById('attendanceList');
+const listBody = document.getElementById('listBody');
+
+let html5QrcodeScanner;
+
+startScanBtn.addEventListener('click', () => {
+  scannerDiv.style.display = 'block';
+  attendanceDiv.style.display = 'none';
+
+  if (!html5QrcodeScanner) {
+    html5QrcodeScanner = new Html5Qrcode("reader");
+  }
+
+  html5QrcodeScanner.start(
+    { facingMode: "environment" }, // استخدام الكاميرا الخلفية
+    {
+      fps: 10,
+      qrbox: 250
+    },
+    qrCodeMessage => {
+      html5QrcodeScanner.stop().then(() => {
+        const barcode = qrCodeMessage;
+        const name = prompt("أدخل اسم الطالب للباركود: " + barcode);
+        if(name){
+          const now = new Date();
+          const student = {
+            name: name,
+            barcode: barcode,
+            date: now.toLocaleDateString(),
+            time: now.toLocaleTimeString()
+          };
+          let attendance = JSON.parse(localStorage.getItem('attendance')) || [];
+          attendance.push(student);
+          localStorage.setItem('attendance', JSON.stringify(attendance));
+          alert(name + " تم تحضيره بنجاح!");
+        }
+        scannerDiv.style.display = 'none';
+      }).catch(err => console.log(err));
+    },
+    errorMessage => {
+      // خطأ المسح يمكن تجاهله
+      // console.log(errorMessage);
+    }
+  ).catch(err => alert("لم يتم تشغيل الكاميرا. تأكد من السماح بالوصول."));
+});
+
+showListBtn.addEventListener('click', () => {
+  scannerDiv.style.display = 'none';
+  attendanceDiv.style.display = 'block';
+  listBody.innerHTML = '';
+  let attendance = JSON.parse(localStorage.getItem('attendance')) || [];
+  attendance.forEach(student => {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td>${student.name}</td><td>${student.barcode}</td><td>${student.date}</td><td>${student.time}</td>`;
+    listBody.appendChild(row);
+  });
+});
+</script>
+
+</body>
+</html>
